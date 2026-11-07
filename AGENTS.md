@@ -8,10 +8,10 @@
 
 | Модуль | Платформа | Назначение | Приоритет |
 |---|---|---|---|
-| `env:esp32_core` (`src_esp32/`) | ESP32 (NodeMCU V3, CH340) | Основной контроллер. Логика работы котла и теплоаккумулятора, FSM, связь с пользователем/сетью, координация системы. | Координация, но **НЕ** замещает защиту |
-| `env:arduino_safety` (`src_avr8/`) | Arduino Nano (ATmega328P) | **Модуль безопасности (Safety Unit)**. Жёсткий контроль критичных параметров, аварийные отсечки, приоритет над основным модулем. | **Максимальный. Безопасность превыше всего** |
+| `env:esp32_core` / планируется `env:esp32s3_core` (`src_esp32/`) | **Main Unit (условно, safety-gated): KC868-A6v3, ESP32-S3-WROOM-1 N16R8** (замена NodeMCU V3 baseline). См. `docs/hardware/kc868-a6v3_analysis.md` §7/§14. Legacy `esp32dev` env сохраняется до миграции. | Основной контроллер: логика котла/теплоаккумулятора, FSM, координация, связь с Nano/сетью/RS485. KC868 onboard PCF8574/I2C **не независимый/fail-safe safety path** (latch/reset/brownout/I2C fault). Реле — только прикладное управление при Nano hardware safety-gate/cutoff/block-stop. Критичные датчики Nano (`SEN_AIR_PRESSURE`, `SEN_OIL_TEMP_SAFETY`, `SEN_FLOAT_MIN/MAX`) — прямые на Nano. `SEN_FLAME`: **baseline SR-B13/S-47** (direct GPIO+изолированный формирователь); отклонение BLK-005 — **PROPOSED/NOT VALIDATED, не разрешено до `safety-reviewer`+`schematic-engineer` APPROVE**. Блокеры: `docs/architecture/blockers.md`. | Координация, но **НЕ** замещает защиту |
+| `env:arduino_safety` (`src_avr8/`) | Arduino Nano (ATmega328P) | **Модуль безопасности (Safety Unit)**. Независимый контроль, аварийные отсечки, safety-gate, heartbeat-супервизия, hardware cutoffs/block-stop (SR-B4/SR-B18), supervised power-cycle Main Unit (SR-B6). **Не заменяется.** | **Максимальный. Безопасность превыше всего** |
 
-Связь между модулями — **UART** (возможно через оптопары с гальваноразвязкой). Протокол описан в `docs/protocol/uart.md`.
+Связь между модулями — **dedicated point-to-point UART** (safety-критичный канал; общая RS485 для safety-связи не рекомендуется). KC868: native USB-C — debug; safety UART — на свободных GPIO (TBD, шаг 3, §7.16/§7.18). Протокол: `docs/protocol/uart.md`; миграция `include/common_protocol.h` — только с `safety-reviewer`.
 
 Общие заголовки кладутся в `include/` и подключаются обоими окружениями (`build_flags = -I include`).
 
