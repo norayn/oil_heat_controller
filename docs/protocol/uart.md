@@ -1,11 +1,11 @@
-# Протокол обмена Main Unit (KC868-A6v3) <-> Safety Unit (Nano)
+# Протокол обмена Main Unit (KC868-A6) <-> Safety Unit (Nano)
 
-Статус: **черновик (требует миграции/согласования)**. Базовый вариант — **dedicated point-to-point UART** (safety-критичный канал). Общая шина RS485 для safety-связи **не рекомендуется** без отдельного обоснования, доказательства fail-safe при всех отказах шины/устройств и `APPROVE` `safety-reviewer`. KC868/архитектурные условия — `docs/hardware/kc868-a6v3_analysis.md` §7.8/§7.15/§14. **Любое изменение транспорта/формата/семантики — fail-safe анализ + обязательный `safety-reviewer`.**
+Статус: **черновик (требует миграции/согласования)**. Базовый вариант — **dedicated point-to-point UART** (safety-критичный канал). Общая шина RS485 для safety-связи **не рекомендуется** без отдельного обоснования, доказательства fail-safe при всех отказах шины/устройств и `APPROVE` `safety-reviewer`. KC868/архитектурные условия — `docs/hardware/kc868-a6_analysis.md` §6/§7. **Любое изменение транспорта/формата/семантики — fail-safe анализ + обязательный `safety-reviewer`.**
 
 ## Параметры связи (планируемые, фиксировать в pinmap/прошивке)
 
 - **Интерфейс:** выделенный UART точка-точка.
-- **Main Unit (KC868, ESP32-S3):** UART на свободных GPIO-кандидатах (TBD, шаг 3, §7.16). **Native USB-C** — debug/прошивка, не safety link.
+- **Main Unit (KC868, ESP32-WROOM-32):** UART на свободных GPIO-кандидатах (TBD, шаг 3, board test/официальный пин-лист). **USB-C + CH340C** (не native USB) — debug/прошивка, не safety link.
 - **Safety Unit (Nano):** `Serial`/аппаратный UART (D0/D1 конфликтуют с USB-программированием/отладкой — обязательна процедура/переключение/альтернатива в pinmap/schematic). SoftwareSerial для safety-канала нежелателен.
 - **Скорость:** **единая, ≤19200 бод** (норматив для надёжности/детерминизма на данном этапе; текущие 115200/9600 в заготовках — **недопустимое расхождение**, требует миграции). Финальное значение — после тестов/схемы.
 - **Гальваноразвязка/уровни/grounding:** определяется архитектурой §7.18 (вариант A/B, не смешивать барьеры). 74LVC1T45/2T45 — **транслятор уровней при общей земле, не изолятор**; развязка — ISO7421/Si862x/ADuM1201/оптопары по схеме.
@@ -40,7 +40,7 @@
 - `safetyPermit` / `gateState` (явное разрешение/состояние safety-gate)
 - `alarmBits`, `latch`, `errSeverity`
 - `sensorValid` / статусы критичных датчиков Nano (давление, уровни, температура safety)
-- `contactorFb` — feedback общего Nano-контактора (fail-safe полярность, BLK-002)
+- `contactorFb` — feedback общего Nano-контактора/силового реле (не самозамыкающегося, только Nano; fail-safe полярность, BLK-002)
 - `kc868PowerFb` — feedback питания KC868 `present/absent/fault-unknown` (SR-B6 / BLK-001/004 coarse mitigation)
 - CRC
 
@@ -55,7 +55,7 @@
 
 - Onboard relays/inputs KC868 — PCF8574/I2C, **не safety path**. I2C health должен отражаться в протоколе; I2C recovery best-effort не заменяет Nano hardware cutoffs.
 - Supervised power-cycle 12В KC868 — действие Nano (SR-B6), не команда Main Unit. Main Unit должен корректно переживать обесточивание/возврат (safe boot, no auto-restart dangerous state).
-- `SEN_FLAME` (BLK-005, **PROPOSED/NOT VALIDATED**): **baseline SR-B13/S-47** — direct ESP32-S3 GPIO + внешний гальванически изолированный формирователь digital/Schmitt, fail-safe полярность/диагностика; запрещено KC868 opto/PCF8574/I2C/ADC-raw. Пользовательское отклонение (фоторезистор -> аналоговый вход KC868 + экранирование + ЭМС-тесты; fallback opto/изолированный формирователь) **НЕ утверждено и НЕ разрешено к реализации** до PASS валидации и `safety-reviewer`+`schematic-engineer` APPROVE. До APPROVE действуют требования SR-B13/S-47. `flameStatus` в heartbeat используется Nano для супервизии (`INVALID/DEGRADED` = консервативно/не пламя для опасных действий); Nano не имеет прямого входа пламени.
+- `SEN_FLAME` (BLK-005, **PROPOSED/NOT VALIDATED**): **baseline SR-B13/S-47** — direct ESP32 GPIO + внешний гальванически изолированный формирователь digital/Schmitt, fail-safe полярность/диагностика; запрещено KC868 opto/PCF8574/I2C/ADC-raw. Пользовательское отклонение (фоторезистор -> аналоговый вход KC868 + экранирование + ЭМС-тесты; fallback opto/изолированный формирователь) **НЕ утверждено и НЕ разрешено к реализации** до PASS валидации и `safety-reviewer`+`schematic-engineer` APPROVE. До APPROVE действуют требования SR-B13/S-47. `flameStatus` в heartbeat используется Nano для супервизии (`INVALID/DEGRADED` = консервативно/не пламя для опасных действий); Nano не имеет прямого входа пламени.
 
 ## Тесты/проверки (минимум, до приёмки протокола)
 
@@ -68,7 +68,7 @@
 - Совместимость с Nano D0/D1 процедурой прошивки.
 
 ## Ссылки
-- `docs/hardware/kc868-a6v3_analysis.md` §7.8/§7.15/§14
+- `docs/hardware/kc868-a6_analysis.md` §6/§7
 - `docs/architecture/modules.md`, `docs/hardware/periph_distribution.md`, `docs/hardware/pinmap.md`
 - `include/common_protocol.h` — миграция обязательна (`safety-reviewer`)
 - `docs/protocol/rs485.md`, `docs/protocol/errors.md` (план)
