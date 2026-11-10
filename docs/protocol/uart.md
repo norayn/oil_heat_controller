@@ -71,5 +71,5 @@
 - `docs/hardware/kc868-a6_analysis.md` §6/§7
 - `docs/architecture/modules.md`, `docs/hardware/periph_distribution.md`, `docs/hardware/pinmap.md`
 - `include/common_protocol.h` — миграция обязательна (`safety-reviewer`)
-- `docs/protocol/rs485.md`, `docs/protocol/errors.md` (план)
+- `docs/protocol/rs485.md`; протокол ошибок — документ планируется
 - `docs/safety/checklist.md`

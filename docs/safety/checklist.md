@@ -4,13 +4,13 @@
 
 Безопасный код нужен в ОБОИХ модулях. Ревью не ограничивается только Safety Unit.
 
-Статус чек-листа: **актуализирован 2026-11-08** (BLK-001..011). Дополнять при появлении новых схемных/испытательных артефактов. Блокеры/approval gates: `docs/architecture/blockers.md`.
+Статус чек-листа: **актуализирован 2026-11-10** (BLK-001..012). Дополнять при появлении новых схемных/испытательных артефактов. Блокеры/approval gates: `docs/architecture/blockers.md`.
 
 ## 1. Общие принципы
 - [ ] **Fail-safe** — при потере связи/неопределённом состоянии реализован переход в безопасное состояние (оба модуля).
 - [ ] **Приоритет защиты** — логика безопасности не ослаблена; Nano сохраняет финальное право запрета/блокировки.
 - [ ] **Nano-инварианты сохранены** — safety-gates NC (`ACT_OIL/AIR_VALVE_SAFETY`) только Nano; `SEN_AIR_PRESSURE`, `SEN_OIL_TEMP_SAFETY`, `SEN_FLOAT_MIN/MAX` прямые на Nano; SR-B4/SR-B18 только подтверждённой схемой; latch/no auto-resume опасных режимов.
-- [ ] **Main Unit = KC868-A6 (не v3) board verification** — подтверждены ревизия платы vs официальная схема A6, MCU (ESP32-WROOM-32), тип/контакты реле (SPDT/ULN2003A), поведение PCF8574/реле при reset/brownout/power loss, опто-входы, ADC A1–A4, свободные GPIO/strapping, RS485 без изоляции. **PCF8574/I2C не считается safety path**; safety — внешний слой Nano. См. `docs/hardware/kc868-a6_analysis.md` §7.
+- [ ] **Main Unit = KC868-A6 board verification** — подтверждены ревизия платы vs официальная схема A6, MCU (ESP32-WROOM-32), тип/контакты реле (SPDT/ULN2003A), поведение PCF8574/реле при reset/brownout/power loss, опто-входы, ADC A1–A4, свободные GPIO/strapping, RS485 без изоляции. **PCF8574/I2C не считается safety path**; safety — внешний слой Nano. См. `docs/hardware/kc868-a6_analysis.md` §7.
 - [ ] **Детерминизм** — в Safety Unit нет блокирующих конструкций там, где критична скорость реакции.
 - [ ] **Минимум изменений** — не сделано лишних правок в критичном коде.
 - [ ] **Соответствие спецификации** — правка согласуется с `rnd/peripherals.md` и утверждёнными docs.
@@ -56,7 +56,6 @@
 - [ ] **KC868 PCF8574/I2C не fail-safe safety path** — реле/входы только прикладные/технологические при Nano hardware backup; критичные датчики Nano не на KC868 опто/PCF8574.
 - [ ] **BLK-009** — grounding/isolation (§7.18) и 220В монтаж/транзиенты (S-48): DIN вне отсека котла, IP/clearance/creepage, защита ветвей, RCD type A 30mA по схеме, transient suppression, отдельное некоммутируемое питание Nano.
 - [ ] **BLK-010** — RS485 non-safety (S-49): DMX/Modbus раздельные сегменты, `DE/RE` limits/timeouts/abort, изоляция/терминация, slave watchdog/fail-safe defaults (заслонка — безопасная позиция, насосы полов — OFF).
-- [ ] **FPC (если рассматривать)** — только гибрид; Nano сохраняет прямые safety датчики, SR-B4/SR-B18 и safety-gates. Без отдельного `safety-reviewer` APPROVE не принимать.
 
 ## 7. Код обоих модулей
 - [ ] **src_avr8/** — детерминизм, минимум абстракций, явные проверки, WDT/таймауты.

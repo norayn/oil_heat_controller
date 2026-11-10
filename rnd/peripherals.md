@@ -57,5 +57,5 @@
 ## 3. управляющие модули
 
 ### 3.1. контроллеры управления
-*   **MAIN_UNIT** — главный контроллер который управляет системой (**KinCony KC868-A6**, не v3: ESP32-WROOM-32, USB-C + CH340C, 6 реле PCF8574 `0x24`, 6 опто-входов PCF8574 `0x22`, 4×ADC, 2×1-Wire, RS485, RS232; safety-gated, см. `docs/hardware/kc868-a6_analysis.md`)
+*   **MAIN_UNIT** — главный контроллер который управляет системой (**KinCony KC868-A6**: ESP32-WROOM-32, USB-C + CH340C, 6 реле PCF8574 `0x24`, 6 опто-входов PCF8574 `0x22`, 4×ADC, 2×1-Wire, RS485, RS232; safety-gated, см. `docs/hardware/kc868-a6_analysis.md`)
 *   **SAFETY_UNIT** — модуль безопасности и дополнительных датчиков, работает в постоянной связи с главным модулем (arduino nano китайский клон)

@@ -8,7 +8,7 @@
 
 | Модуль | Платформа | Назначение | Приоритет |
 |---|---|---|---|
-| `env:esp32_core` (`src_esp32/`) | **Main Unit (условно, safety-gated): KinCony KC868-A6 (не v3), ESP32-WROOM-32, USB-C + CH340C** (замена NodeMCU V3 baseline). См. `docs/hardware/kc868-a6_analysis.md` §6/§7. Legacy `esp32dev` env (`board = esp32dev`) подходит и сохраняется. | Основной контроллер: логика котла/теплоаккумулятора, FSM, координация, связь с Nano/сетью/RS485. KC868 onboard PCF8574/I2C **не независимый/fail-safe safety path** (latch/reset/brownout/I2C fault). Реле — только прикладное управление при Nano hardware safety-gate/cutoff/block-stop. Критичные датчики Nano (`SEN_AIR_PRESSURE`, `SEN_OIL_TEMP_SAFETY`, `SEN_FLOAT_MIN/MAX`) — прямые на Nano. `SEN_FLAME`: **baseline SR-B13/S-47** (direct GPIO+изолированный формирователь); отклонение BLK-005 — **PROPOSED/NOT VALIDATED, не разрешено до `safety-reviewer`+`schematic-engineer` APPROVE**. Блокеры: `docs/architecture/blockers.md`. | Координация, но **НЕ** замещает защиту |
+| `env:esp32_core` (`src_esp32/`) | **Main Unit (условно, safety-gated): KinCony KC868-A6, ESP32-WROOM-32, USB-C + CH340C**. См. `docs/hardware/kc868-a6_analysis.md` §6/§7. Legacy `esp32dev` env (`board = esp32dev`) подходит и сохраняется. | Основной контроллер: логика котла/теплоаккумулятора, FSM, координация, связь с Nano/сетью/RS485. KC868 onboard PCF8574/I2C **не независимый/fail-safe safety path** (latch/reset/brownout/I2C fault). Реле — только прикладное управление при Nano hardware safety-gate/cutoff/block-stop. Критичные датчики Nano (`SEN_AIR_PRESSURE`, `SEN_OIL_TEMP_SAFETY`, `SEN_FLOAT_MIN/MAX`) — прямые на Nano. `SEN_FLAME`: **baseline SR-B13/S-47** (direct GPIO+изолированный формирователь); отклонение BLK-005 — **PROPOSED/NOT VALIDATED, не разрешено до `safety-reviewer`+`schematic-engineer` APPROVE**. Блокеры: `docs/architecture/blockers.md`. | Координация, но **НЕ** замещает защиту |
 | `env:arduino_safety` (`src_avr8/`) | Arduino Nano (ATmega328P) | **Модуль безопасности (Safety Unit)**. Независимый контроль, аварийные отсечки, safety-gate, heartbeat-супервизия, hardware cutoffs/block-stop (SR-B4/SR-B18), supervised power-cycle Main Unit (SR-B6). **Не заменяется.** | **Максимальный. Безопасность превыше всего** |
 
 Связь между модулями — **dedicated point-to-point UART** (safety-критичный канал; общая RS485 для safety-связи не рекомендуется). KC868: USB-C + CH340C — debug (не native USB); safety UART — на свободных GPIO (TBD, шаг 3, board test/официальный пин-лист, §7.18). Протокол: `docs/protocol/uart.md`; миграция `include/common_protocol.h` — только с `safety-reviewer`.
@@ -59,10 +59,17 @@ oil_heat_controller/
 - `rnd/agents_init_roles.txt` — роли
 
 Доп. документация ведётся в `docs/`:
-- `docs/architecture/modules.md` — разделение ответственности ESP32/Safety Unit
-- `docs/hardware/pinmap.md` — пин-мап с обоснованием и проверкой коллизий
-- `docs/protocol/uart.md` — протокол обмена, таймауты, heartbeat, коды ошибок
+- `docs/architecture/modules.md` — роли и границы ответственности
+- `docs/architecture/blockers.md` — блокеры, статусы, approval gates
+- `docs/hardware/periph_distribution.md` — владение периферией
+- `docs/hardware/pinmap.md` — пин-мап (DRAFT)
+- `docs/hardware/kc868-a6_connection_plan.md` — бюджет/дефицит линий A6
+- `docs/hardware/kc868-a6_analysis.md` — факты платы A6, условия принятия
+- `docs/protocol/uart.md` — safety UART, heartbeat, коды ошибок
+- `docs/protocol/rs485.md` — non-safety RS485
 - `docs/safety/checklist.md` — чек-лист ревью по безопасности
+- `docs/safety/blk002_closure_package.md` — BLK-002
+- `docs/safety/fsm_safety_boundary.md` — BLK-003
 
 ## Правила для разработки
 

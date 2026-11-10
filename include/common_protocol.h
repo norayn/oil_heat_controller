@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 // SAFETY DRAFT — DO NOT USE IN FIRMWARE UNTIL `safety-reviewer` APPROVE.
-// Dedicated point-to-point UART safety channel: Main Unit (KC868/ESP32-S3) <-> Safety Unit (Nano).
+// Dedicated point-to-point UART safety channel: Main Unit (KC868/ESP32) <-> Safety Unit (Nano).
 // Replaces non-safety TelemetryPacket placeholder.
 // Rules: fail-safe on CRC/seq/protoVer/timeout/invalid fields; no dangerous auto-resume after latch;
 // heartbeat 100-200 ms, timeout <= 3 periods (<=600 ms); see docs/protocol/uart.md and
