@@ -1,0 +1,8 @@
+{
+    // PlatformIO IDE 3.3.x: задачи env подгружаются лениво — только для выбранного
+    // env (или после раскрытия env в «Project Tasks»). Кнопки сборки в статус-баре
+    // берут задачи из последнего refresh, поэтому для остальных env падают с
+    // "Cannot read properties of undefined (reading 'id')".
+    // true — подгружать задачи ВСЕХ env сразу; кнопки работают для любого env.
+    "platformio-ide.autoPreloadEnvTasks": true
+}

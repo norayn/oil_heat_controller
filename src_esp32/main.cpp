@@ -1,12 +1,13 @@
-#include <Arduino.h>
-#include "common_protocol.h" // Подключаем общий заголовочный файл
+#include "app/app.h"
+
+// Arduino framework вызывает setup()/loop(). Вся логика — в app/.
+// Serial.begin выполняет platform::logBegin() внутри app::setup(),
+// чтобы earlyApplicationSafe() успел раньше Serial/I2C (§11.1).
 
 void setup() {
-    Serial.begin(115200);
-    Serial.println("ESP32 Communication Module Started");
+    app::setup();
 }
 
 void loop() {
-    // Логика работы ESP32 (Wi-Fi, отправка команд)
-    delay(1000);
+    app::tick();
 }

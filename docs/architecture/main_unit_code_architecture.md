@@ -1307,7 +1307,7 @@ build_src_filter =
 
 | Этап | Содержание | Готово, когда | Nano |
 |---|---|---|---|
-| **M0. Каркас** | `config/limits.h` + `settings.h`, scheduler, `ActuatorService`, `ModeManager`, `SafetyPolicy`, `ISafetySource` + `NullSafetyLink`, доменные типы lease, каталоги `manual/` и `bench/`, host-тесты | собирается, тесты проходят, полевой и отладочные бинарники не смешиваются (`nm`) | не нужен |
+| **M0. Каркас** — ГОТОВО | `config/limits.h` + `settings.h`, scheduler, `ActuatorService`, `ModeManager`, `SafetyPolicy`, `ISafetySource` + `NullSafetySource`, доменные типы lease, каталоги `manual/` и `bench/`, host-тесты | собирается, тесты проходят, полевой и отладочные бинарники не смешиваются (`nm`) | не нужен |
 | **M1. Manual на котле** | 6 реле PCF8574 + direct-GPIO «SSR pilot», read-back, I2C health, мониторинг датчиков | реле щёлкают как ожидалось, датчики видны, `all off`/deadman работают | отключён |
 | **M1b. ТЭН** | SSR + внешний термостат + термопредохранитель | реальный ТЭН греет и отключается по термостату | отключён |
 | **M2. Датчики** | DS18B20, MAX6675, flame baseline, валидность/фильтры | значения правдоподобны, невалидные распознаются | наблюдение |
@@ -1319,6 +1319,31 @@ build_src_filter =
 | **M6. Настройки и веб** | `SettingsService`, веб по Wi-Fi, RS485, детект 220 В | настройки меняются из браузера, управление не блокируется | не влияет |
 
 **Что нужно, чтобы полевая прошивка считалась полевой:** `esp32_core` + прошитый Nano + смонтированные NC-клапаны, контактор, автомат, термопредохранитель. Всё остальное — по желанию, список в `blockers.md` («Проверки перед финальной сборкой»).
+
+### 12.1. Итог M0 (2026-11-13)
+
+Сделано ровно то, что в строке M0, без расширения области:
+
+| Проверка | Результат |
+|---|---|
+| `pio test -e native` / `native_manual` / `native_bench_auto` | все наборы PASS: 51 / 64 / 52 теста (policy 17, actuator 18, mode_manager 9, scheduler 5, manual 14, bench 2 — по профилю env) |
+| `pio run -e esp32_core` / `esp32_manual` / `esp32_bench_auto` / `arduino_safety` | все SUCCESS, Flash 22.4–22.7 % (ESP32), 4.9 % (Nano) |
+| `nm` по elf | `esp32_core`: только `safetyPolicyEvaluate`, `SafetySupervisor`, `NullSafetySource`; `esp32_manual`: `tickManual`/`ManualControlService`, supervisor отсутствует; `esp32_bench_auto`: `NanoStubLink` + supervisor, `NullSafetySource` отсутствует |
+| объектники в `.pio/build/esp32_core` | ни одного из `manual/`, `bench/`, `app_manual.cpp`, `app_bench_auto.cpp` |
+| `strings` | «MANUAL BYPASS» только в manual, «NANO STUB» только в bench-auto |
+| guard-матрица (негативные сборки) | падают: manual-флаг в FIELD, `NANO_STUB` в FIELD, `ENABLE_AUTO` без `REQUIRE_*`, bench-auto без `NANO_STUB`, две цели сразу, флаг `=0`, manual+AUTO |
+
+Отклонения от документа, зафиксированные по факту:
+
+- `SafetySupervisor` реализован сразу в M0 (тонкая stateful-обёртка `ever*`), а не заглушкой: тесты §7.3 без него не проверить.
+- `NullSafetySource` вместо `NullSafetyLink` — источник lease по факту сервис, а не транспорт; `SafetyLink`/`UartLink` появятся в M3.
+- `platform/nvs` сделан на ESP-IDF `<nvs.h>`, а не на `Preferences.h`: LDF не подхватывает библиотеку при `build_src_filter` из `../src_esp32/`.
+- Функция `bit(ActuatorId)` переименована в `actuatorBit()`: `Arduino.h` определяет макрос `bit()`, и в manual-сборке имя конфликтует.
+- `src/.gitkeep` — PlatformIO требует существующий `src/`, иначе фильтры `+<../src_esp32/>` не работают.
+- `src_avr8/main.cpp` временно не включает `common_protocol.h`: AVR-часть `static_assert` в драфте протокола не проходит (BLK-006, M3/N3).
+
+**Следующий шаг — M1 (manual на котле):** PCF8574 (6 реле) + direct-GPIO «SSR pilot», read-back, I2C health, мониторинг датчиков. Код M0 к этому готов; нужны только конкретные линии из `pinmap.md` (DRAFT) и проверка на плате.
+
 
 ## 13. Что можно заглушать, а что — никогда
 
@@ -1486,7 +1511,7 @@ M0–M1 дают ручное управление на котле; M2–M4 до
 | `docs/architecture/blockers.md` | уже переведён в «Открытые технические вопросы»; BLK-013 закрыт принятием риска |
 | `docs/safety/accepted_risks.md` | источник правды по рискам; дополнять при новых осознанных решениях |
 | `docs/safety/checklist.md` | смягчить формулировки: памятка, не gate; убрать runtime-бюджет, `CONFIRM`, маркировку, журнал |
-| `AGENTS.md` | уже обновлён (риск-регистр, ревью не gate, текущий шаг M0) |
+| `AGENTS.md` | уже обновлён (риск-регистр, ревью не gate, M0 готов, текущий шаг M1) |
 | `docs/architecture/modules.md` | убрать обязательность ревью; отладочные сборки — не Main Unit; нет привязки к плате |
 | `docs/hardware/periph_distribution.md` | убрать «стендовое питание» и bench-only исключения — стенда нет |
 | `docs/protocol/uart.md` | `actBits` = `applied` + `actValid`; `attemptNo`/`retryCount`; manual не участник протокола |
