@@ -1,7 +1,7 @@
 ---
 description: Инженер-Схемотехник. Пин-мап, проверка выводов, развязка, силовая часть 220В.
 mode: subagent
-model: opencode/big-pickle
+model: opencode/deepseek-v4.1-flash-free
 tools:
   read: true
   glob: true

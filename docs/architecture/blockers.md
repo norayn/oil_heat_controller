@@ -1,31 +1,38 @@
-# Блокеры и approval gates
+# Открытые технические вопросы
 
-Статус: **ACTIVE**. Часть блокеров уточнена решениями пользователя; выполнены док-closures (BLK-003 doc ready/ACK requested, BLK-011 checklist expanded, BLK-002: не самозамыкающийся Nano cutoff, без шунтирования; **draft принятия остаточного риска залипания — ACK required**). Схемные/safety-валидационные условия остаются. Добавлен **BLK-012** (board verification A6).
-Дата обновления: 2026-11-10.
+Статус: **справочный список**. Это **не** гейты: ни один пункт ниже не блокирует разработку, этапы и прошивку. Проект — личная разработка, решения принимает владелец.
+
+**Куда смотреть про риски:** `docs/safety/accepted_risks.md`. Принятые риски (отладка на котле, отсутствие привязки к плате, заглушка Nano, правка защитных констант через веб, отсутствие ревью и журналов) **не являются блокерами** и здесь не дублируются.
+
+**Что осталось в этом файле:** аппаратные факты и вопросы, которые полезно проверить перед финальной сборкой — ревизия платы, поведение PCF8574 при POR, датчик пламени, контактор, протокол. Если пункт не проверен — это не запрет работать, а известная неопределённость.
+Дата обновления: 2026-11-13.
 Область: `docs/architecture/*`, `docs/hardware/*`, `docs/protocol/uart.md`, `include/common_protocol.h`, будущие pinmap/schematic, `src_esp32/`, `src_avr8/`.
 
-> **Правило:** до закрытия CRITICAL/HIGH условий запрещены: финализация pinmap/schematic как «утверждено», реализация safety-протокола в прошивке без `safety-reviewer` APPROVE, ослабление Nano cutoffs/gates/block-stop. Любая реализация — только с `safety-reviewer` (и `schematic-engineer` для силовой части/изоляции/220 В). **Номиналы средств защиты/автоматов/контакторов выбираются на отдельном шаге** и не закрывают safety-анализ топологии/feedback/fail-safe.
+> **Правило:** обязательных согласований нет. Пункты ниже — памятка, а не разрешения. Единственное, что не отменяется бумагой: физика (NC-клапаны, автомат, термопредохранитель, отсечка Nano в финальной сборке).
 
 > **Детали по темам:** BLK-002 — `docs/safety/blk002_closure_package.md`; BLK-003 — `docs/safety/fsm_safety_boundary.md`; распределение периферии и Nano backup по актуаторам — `docs/hardware/periph_distribution.md`; review-гейт — `docs/safety/checklist.md`.
 
 ## Сводка
 
-| ID | Severity | Статус | Тема | Блокирует |
+| ID | Severity | Статус | Тема | Когда смотреть |
 |---|---|---|---|---|
-| BLK-001 | MEDIUM | ACCEPTED DESIGN (SCHEMATIC OPEN) | `ACT_FAN_BLOWER` — KC868 relay; Nano может обесточить **всю плату KC868** (SR-B6, coarse) + автомат. **Per-circuit Nano cutoff не требуется** (решение пользователя). Топливная безопасность — safety-gates + `SEN_AIR_PRESSURE` + обесточивание ТЭН/подкачки/розжига контактором. | schematic SR-B6/board-off side effects, подтверждение автомата/цепи, `safety-reviewer` APPROVE |
-| BLK-002 | CRITICAL | DESIGN GATE | Общий Nano-контактор / **силовое реле (не самозамыкающееся, только Nano)** для ТЭН/подкачки/розжига: сварка/залипание/несостоявшееся размыкание, single-point failure, feedback/fail-safe outputs. Финальная тепловая защита ТЭН — **термовыключатель/«теплушка» на корпусе бака**. | schematic, SR-B4/SR-B18 доказательство, `safety-reviewer` + `schematic-engineer` APPROVE |
-| BLK-003 | HIGH | ACCEPTED RISK (ACK REQUESTED, DOC READY) | `SEN_THERMOCOUPLE_K`/температура выхлопа — зона обратной связи Main Unit, **не зона контроля Nano Safety**. Граница/поведение FSM — `docs/safety/fsm_safety_boundary.md`. | `safety-reviewer` **ACK**; пересмотр при изменении требований |
+| BLK-001 | MEDIUM | ACCEPTED DESIGN (SCHEMATIC OPEN) | `ACT_FAN_BLOWER` — KC868 relay; Nano может обесточить **всю плату KC868** (SR-B6, coarse) + автомат. **Per-circuit Nano cutoff не требуется** (решение пользователя). Топливная безопасность — safety-gates + `SEN_AIR_PRESSURE` + обесточивание ТЭН/подкачки/розжига контактором. | schematic SR-B6/board-off side effects, подтверждение автомата/цепи, проверить перед финальной сборкой |
+| BLK-002 | CRITICAL | ОТКРЫТО (схема) | Общий Nano-контактор / **силовое реле (не самозамыкающееся, только Nano)** для ТЭН/подкачки/розжига: сварка/залипание/несостоявшееся размыкание, single-point failure, feedback/fail-safe outputs. Финальная тепловая защита ТЭН — **термовыключатель/«теплушка» на корпусе бака**. | schematic, SR-B4/SR-B18 доказательство, проверить схему/железо перед финальной сборкой |
+| BLK-003 | HIGH | РИСК ПРИНЯТ | `SEN_THERMOCOUPLE_K`/температура выхлопа — зона обратной связи Main Unit, **не зона контроля Nano Safety**. Граница/поведение FSM — `docs/safety/fsm_safety_boundary.md`. | пересмотр при изменении требований |
 | BLK-004 | HIGH | PARTIALLY SPECIFIED (SCHEMATIC OPEN) | Per-actuator Nano hardware backup: board-off Nano, общий контактор, физическое дублирование клапанов, циркуляционный насос. | schematic, actuator wiring, code review |
-| BLK-005 | HIGH | PROPOSED / NOT VALIDATED | `SEN_FLAME` = фоторезистор на **аналоговый вход KC868** + экранирование + ЭМС-тесты; fallback — опторазвязка. Отклонение от SR-B13/S-47. | schematic, noise/ignition tests, протокол flame/ignition supervision, `safety-reviewer` + `schematic-engineer` APPROVE |
-| BLK-006 | HIGH | IN PROGRESS (DOC DRAFT, SAFETY-REVIEW REQUIRED) | Миграция `include/common_protocol.h`/`docs/protocol/uart.md` (safety-oriented draft). | любой safety UART код, heartbeat/permit, совместимость |
+| BLK-005 | HIGH | PROPOSED / NOT VALIDATED | `SEN_FLAME` = фоторезистор на **аналоговый вход KC868** + экранирование + ЭМС-тесты; fallback — опторазвязка. Отклонение от SR-B13/S-47. | schematic, noise/ignition tests, протокол flame/ignition supervision, проверить схему/железо перед финальной сборкой |
+| BLK-006 | HIGH | ЧЕРНОВИК | Миграция `include/common_protocol.h`/`docs/protocol/uart.md` (safety-oriented draft). | любой safety UART код, heartbeat/permit, совместимость |
 | BLK-007 | MEDIUM | POLICY SPECIFIED (SCHEMATIC OPEN) | `ACT_PUMP_BOILER`: KC868 relay + возможное (не по умолчанию) дублированное включение Nano (автомат). Оставание ON в аварии — не проблема (решение пользователя). | pinmap/schematic, управление насосом котла |
 | BLK-008 | MEDIUM | OPEN | SR-B6 supervised power-cycle KC868 (whole-board power-off — mitigation в BLK-001/004): BOR/Hi-Z/feedback/weld/ramp tests не трассированы. | schematic, Nano power-control, стендовые тесты |
 | BLK-009 | MEDIUM | OPEN | Grounding/isolation §7.18 и 220 В монтаж/транзиенты (S-48) не выбраны/не подтверждены. | schematic, PCB/wiring, UART/feedback isolation, EMC/safety tests |
 | BLK-010 | MEDIUM | OPEN | RS485 S-49 не финализирован. | RS485 design, slave specs |
-| BLK-011 | LOW | PARTIALLY CLOSED (DOC EXPANDED) | `docs/safety/checklist.md` расширен (BLK-001..012 gates). Дополнять при появлении новых схемных/испытательных артефактов. | будущие safety-review / evidence review |
-| BLK-012 | HIGH | OPEN (BOARD VERIFICATION REQUIRED) | **KC868-A6 v1.3**: подтвердить ревизию vs официальная схема A6, MCU/flash/PSRAM, USB/CH340C, свободные GPIO/strapping, реле (SPDT/ULN2003A) и PCF8574 при reset/brownout/power loss, опто-входы EL357N, ADC A1–A4, RS485 (MAX13487EESA, без изоляции), питание/бросок. | `schematic-engineer` + `safety-reviewer`; до финализации pinmap A6 и сборки/прошивки |
+| BLK-011 | LOW | СПРАВОЧНО | `docs/safety/checklist.md` — памятка, не обязательный документ. Дополнять по желанию. | когда удобно |
+| BLK-012 | HIGH | ОТКРЫТО (сверить с платой) | **KC868-A6 v1.3**: подтвердить ревизию vs официальная схема A6, MCU/flash/PSRAM, USB/CH340C, свободные GPIO/strapping, реле (SPDT/ULN2003A) и PCF8574 при reset/brownout/power loss, опто-входы EL357N, ADC A1–A4, RS485 (MAX13487EESA, без изоляции), питание/бросок. **012-id** — ревизия/схема/BOM/бюджет линий; **012-evidence** — измерения POR/reset/brownout, собираются в M1. | **012-id** — до финализации pinmap A6; **012-evidence** — до реальных нагрузок и 220 В на реальные актуаторы |
+| BLK-013 | — | **ЗАКРЫТ ПРИНЯТИЕМ РИСКА** | **Отладочные сборки**: `esp32_manual` (без `SafetySupervisor`/`SafetyLink`/FSM) и `esp32_bench_auto` (полевое ядро + заглушка Nano). Аппаратного ключа, привязки к плате, подтверждений и ограничения времени работы нет — AR-01…AR-05, AR-10. | не требуется |
 
-## Детали блокеров
+> Колонка «Когда смотреть» — ориентир, а не запрет. Ни один пункт не останавливает работу.
+
+## Подробности
 
 ### BLK-001 (MEDIUM → ACCEPTED DESIGN, SCHEMATIC OPEN) — Вентилятор наддува
 
@@ -38,30 +45,30 @@
 - [ ] SR-B6 board-off (если используется): Nano **никогда** не режет своё питание; только питание KC868; supervised/last-resort, current-limited, no fast cycling, min off-time/limits, 3-state feedback, latch, fail-safe outputs. Board-off убивает Main Unit/FSM/heartbeat; **не использовать как штатный механизм управляемой постпродувки**. Состояние реле/нагрузок при board-off — подтвердить схемой.
 - [ ] При пропадании питания KC868 реле/выходы платы ведут себя предсказуемо (подтвердить схемой/поведением).
 - [ ] `SEN_AIR_PRESSURE` на Nano — обязательный инвариант (прямой вход).
-- [ ] `safety-reviewer` APPROVE после схемного подтверждения.
+- [ ] Проверить схему и поведение; обязательного согласования нет.
 
 ### BLK-002 (CRITICAL → DESIGN GATE) — Общий Nano-контактор / силовое реле
 
-**Решение пользователя:** не архитектурный запрет, а выбор конечного устройства коммутации. Номиналы — отдельный шаг. **Контактор/силовое реле не самозамыкающееся, без самоподхвата, управляется только Nano; без шунтирования/дублирующих путей питания группы в обход Nano cutoff.** Для ТЭН — **термовыключатель/«теплушка» на корпусе нагреваемого бака**.
+**Решение пользователя:** не архитектурный запрет, а выбор конечного устройства коммутации. Номиналы — отдельный шаг. **Контактор/силовое реле не самозамыкающееся, без самоподхвата, управляется только Nano; без шунтирования/дублирующих путей питания группы в обход Nano cutoff.** Исключений нет. Для ТЭН — **термовыключатель/«теплушка» на корпусе нагреваемого бака**.
 
-**Draft (REQUIRES `safety-reviewer` ACK, НЕ утверждено):** остаточный риск залипания/сварки/несостоявшейся отсечки принят как остаточный; отдельная аппаратная weld-mitigation в текущем объёме не требуется. Риск **не устранён физически**.
+**Принято:** остаточный риск залипания/сварки/несостоявшейся отсечки принят; отдельная аппаратная weld-mitigation в текущем объёме не требуется. Риск **не устранён физически**.
 
 **Компенсирующие меры (обязательны, не снимать):**
 - Nano safety-gates топлива/воздуха (NC, только Nano) + `SEN_AIR_PRESSURE` предотвращают опасную подачу топлива/воздуха даже при сварке общего контакта.
-- `ACT_HEATER_OIL` (SR-B4): SSR не аварийное отключение; cutoff последовательно с ТЭН; теплушка + термопредохранитель/предохранители. **Тип сброса теплушки (ручной/самовозврат) — фиксация + `safety-reviewer` ACK**, совместимость с latch/no auto-resume.
+- `ACT_HEATER_OIL` (SR-B4): SSR не аварийное отключение; cutoff последовательно с ТЭН; теплушка + термопредохранитель/предохранители. **Тип сброса теплушки (ручной/самовозврат) — фиксируется в схеме**, совместимость с latch/no auto-resume.
 - `ACT_PUMP_OIL_TRANSFER` (SR-B18): при сварке контакта насос может остаться запитанным; опасная подача топлива в горелку ограничивается safety-gates/уровнями/Nano-логикой. Последствия зафиксировать в схеме/FMEA.
 - `ACT_IGNITION_UNIT`: при сварке контакта блок розжига может остаться запитанным; опасная подача топлива/воздуха блокируется safety-gates; последствия — FMEA.
 - **Feedback fail-safe полярность** (`UNKNOWN/FAULT` != «отсечено»), **latch/no restart** при неподтверждённой отсечке — обязательны.
 
 **Пакет закрытия, схема, FMEA, evidence, критерий закрытия:** `docs/safety/blk002_closure_package.md`. **Без него BLK-002 не закрывается.**
 
-### BLK-003 (HIGH → ACCEPTED RISK, ACK REQUESTED) — Температура выхлопа
+### BLK-003 (риск принят) — Температура выхлопа
 
 `SEN_THERMOCOUPLE_K`/MAX6675 — **не зона контроля Nano Safety**; обратная связь процесса горения Main Unit. Nano **не обязан** иметь независимый hardware-триггер перегрева выхлопа. Защита опирается на Nano safety-gates, `SEN_AIR_PRESSURE`, прямые Nano датчики, heartbeat/FSM supervision, общий Nano-контактор, latch/fail-safe.
 
 - [x] Граница зафиксирована: `docs/safety/fsm_safety_boundary.md`.
 - [x] Требование к Main Unit: при недостоверности/timeout/fault — безопасный прикладный режим.
-- [ ] **Требуется `safety-reviewer` ACK** границы/принятого риска.
+- [x] Граница и принятый риск зафиксированы (риск принят).
 - [ ] Placement/интерфейс MAX6675 — по схеме (шум, SPI, диагностика fault), без требования Nano safety-path.
 
 Пересмотр обязателен при изменении требований к защите от перегрева выхлопа, компоновки/топки/материалов или появлении независимого датчика на Nano.
@@ -88,16 +95,16 @@
 - [ ] Практические тесты ЭМС/наводок **во время розжига** и при всех режимах вентилятора/контакторов; критерии PASS/FAIL.
 - [ ] Если наводки/нестабильность — **обязательный переход** на опторазвязку/изолированный формирователь к **direct ESP32 GPIO**.
 - [ ] Протокол/heartbeat несёт достаточный flame/ignition/timeout статус для Nano (BLK-006).
-- [ ] `safety-reviewer` + `schematic-engineer` APPROVE. До валидации — **PROPOSED, not safety-approved**.
+- [ ] Проверить на стенде/железе. Пока не проверено — **PROPOSED**.
 
-### BLK-006 (HIGH → IN PROGRESS, SAFETY-REVIEW REQUIRED) — Миграция протокола
+### BLK-006 (HIGH, ЧЕРНОВИК) — Миграция протокола
 
-**Выполнено в docs (draft):** `include/common_protocol.h` — safety-oriented черновик (`HeartbeatMainToSafety`/`HeartbeatSafetyToMain`, `protoVer/seq/CRC`, FSM/I2C/flame/permit/gate/latch/sensorValid поля) с пометкой **SAFETY DRAFT — DO NOT USE IN FIRMWARE UNTIL `safety-reviewer` APPROVE**. `docs/protocol/uart.md` синхронизируется при финализации.
+**Выполнено в docs (draft):** `include/common_protocol.h` — safety-oriented черновик (`HeartbeatMainToSafety`/`HeartbeatSafetyToMain`, `protoVer/seq/CRC`, FSM/I2C/flame/permit/gate/latch/sensorValid поля) с пометкой **SAFETY DRAFT — не использовать в прошивке до проверки**. `docs/protocol/uart.md` синхронизируется при финализации.
 
 **Осталось:**
-- [ ] `safety-reviewer` APPROVE формата и семантики (CRC algorithm/coverage/seed/polynomial, endian/packing, baud/timeout, seq window/stale/duplicate/resync, unknown/reserved/`protoVer`, test vectors).
+- [ ] Проверить формат и семантику (CRC, endian/packing, baud/timeout, seq window/stale/duplicate/resync, unknown/reserved/`protoVer`, test vectors).
 - [ ] Синхронизировать `docs/protocol/uart.md` и `include/common_protocol.h`.
-- [ ] Реализация в `src_esp32/` и `src_avr8/` — отдельные изменения, каждое с `safety-reviewer`.
+- [ ] Реализация в `src_esp32/` и `src_avr8/` — отдельные изменения, чтобы рассинхрон двух концов было видно.
 
 ### BLK-007 (MEDIUM → POLICY SPECIFIED, SCHEMATIC OPEN) — `ACT_PUMP_BOILER`
 
@@ -105,11 +112,13 @@
 
 **Требуется закрыть:** схема (какой контур включает Nano, приоритеты, защита автоматом, обратное питание/диоды/изоляция при параллельном/альтернативном включении), поведение при отказе датчиков/связи, монтаж 220 В (S-48). Номиналы автомата — отдельный шаг.
 
-### BLK-012 (HIGH, OPEN) — KC868-A6 board-level verification
+### BLK-012 (HIGH, ОТКРЫТО) — KC868-A6 board-level verification
 
 **Контекст:** Main Unit — **KC868-A6, ревизия v1.3** (подтверждено 2026-11-09), ESP32-WROOM-32, USB-C + CH340C. Официальная схема A6 доступна, но **не снимает** сверку с фактической ревизией и board test.
 
-**Требуется закрыть (evidence, `schematic-engineer` + `safety-reviewer`):**
+**Что стоит проверить (evidence):**
+
+**BLK-012-id — до финализации pinmap (идентичность платы и бюджета линий):**
 - [x] **Ревизия платы: v1.3** (2026-11-09).
 - [ ] Сверить применимость `KC868-A6-schematic.pdf` к ревизии **v1.3** (визуально/BOM); маркировка ESP32-WROOM-32, flash/PSRAM.
 - [ ] Реле: SPDT (`PCOM/NC/NO`), драйвер ULN2003A; состояние при **POR** (до init I2C), при **reset/WDT/brownout/power loss**; PCF8574 latch.
@@ -118,22 +127,47 @@
 - [ ] Свободные GPIO/strapping/boot (0/2/5/12/15; 34–39 input-only), включая линии, освобождаемые отказом от RS232 и LoRa/nRF.
 - [ ] RS485 MAX13487EESA — **без гальваноизоляции**; терминирование/TVS; только non-safety.
 - [ ] Питание 12 В: ток холостой/с реле/Wi-Fi, бросок при board-off/on (SR-B6).
-- [ ] `SEN_FLAME` (BLK-005): подтвердить ADC A6 + ЭМС-тесты, либо fallback SR-B13/S-47.
+- [ ] `SEN_FLAME` (BLK-005): подтвердить ADC A6 + ЭМС-тесты, либо fallback SR-B13/S-47; при baseline — **CANDIDATE direct GPIO** с пересчётом бюджета.
+- [ ] Свободные линии под safety UART и `ExternalSupervisorProbe` (GPIO12/13 CANDIDATE).
+
+**BLK-012-evidence — собирается в M1, review до M1b/220 В на реальные актуаторы:**
+- [ ] PCF8574 POR/reset/WDT/brownout/power-loss: осциллограммы, latch после reset, импульс активации реле.
+- [ ] Board-off/on KC868 (SR-B6) side effects на реле/питание; ramp/weld/feedback.
+- [ ] Ток/бросок 12 В при реле/Wi-Fi; тепловой режим.
 
 **Не закрывает:** BLK-002/003/005/006/007/008/009/010 и внешние силовые/защитные цепи. **Pinmap A6 остаётся DRAFT.**
 
-## Обязательные approval gates
+### BLK-013 — Отладочные сборки (закрыт принятием риска)
 
-| Gate | Кто | Когда |
-|---|---|---|
-| Док-правки safety-логики/распределения/протокола (включая `include/`) | `safety-reviewer` | после каждого значимого изменения |
-| Pinmap + силовая/изоляционная схема | `schematic-engineer` + `safety-reviewer` | до шага 3 финализации и до сборки/прошивки |
-| BLK-001 blower + SR-B6 board-off side effects | `schematic-engineer` + `safety-reviewer` | до схемного подтверждения цепи вентилятора/автомата/SR-B6 |
-| BLK-002 общий контактор (топология/feedback/weld/остаточный риск) | `schematic-engineer` + `safety-reviewer` | до утверждения силовой схемы |
-| BLK-003 exhaust temp accepted risk | `safety-reviewer` ACK | до финализации FSM/safety spec |
-| BLK-005 flame sensor (ADC+photoresistor / opto fallback) | `schematic-engineer` + `safety-reviewer` | до утверждения схемы и прошивки логики пламени |
-| BLK-006 protocol migration | `safety-reviewer` | до любого safety UART кода в прошивке |
-| BLK-012 A6 board verification | `schematic-engineer` + `safety-reviewer` | до финализации pinmap A6 и до сборки/прошивки |
-| Стендовые тесты (A6 §7, noise/ignition BLK-005, SR-B6 ramp/weld/feedback) | `safety-reviewer` evidence review | до опытной эксплуатации |
+**Статус: не блокер.** Риски отладочных сборок приняты пользователем 2026-11-13 и записаны в `docs/safety/accepted_risks.md`: AR-01 (отладка на котле), AR-02 (прошивка может остаться), AR-03 (нет подтверждения входа), AR-04 (нет ограничения времени), AR-05 (заглушка Nano), AR-10 (manual без Nano).
 
-> **KC868-A6:** официальная схема доступна (`KC868-A6-schematic.pdf`), но требует сверки с ревизией. Board-level факты (контакты/драйвер реле, reset/brownout, опто-входы, A3/A4, RS485 без изоляции, питание) подтверждаются **схемой + измерением/даташитами** (`schematic-engineer`), а safety-функции строятся **только внешним слоем Nano**. PCF8574/I2C — **не fail-safe path**. Pinmap-статус «утверждён» требует board test + approvals.
+**Что осталось фактом (не требует действий):**
+- в отладочных сборках нет `SafetySupervisor` (manual) либо его входы — заглушка «всё ОК» (bench-auto);
+- при подключённом Nano manual опасен: нет heartbeat → Nano timeout/SR-B6 → POR PCF8574 → импульс реле;
+- при I2C fault команда `allOff` может не дойти, фактическое состояние выходов неизвестно;
+- счётчики retry в RAM обходятся перезагрузкой.
+
+**Что делаем вместо процедур:** ничего. Баннер режима в консоли, разные env, разные точки входа. Этого достаточно, чтобы увидеть, что прошито.
+
+**Что не отменяется:** изоляция сборок на уровне `build_src_filter` — это не бюрократия, а гарантия, что отладочный код не попадёт в полевую прошивку. Она остаётся.
+
+## Проверки перед финальной сборкой (не блокируют разработку)
+
+Это список того, что стоит проверить своими глазами перед тем, как считать прошивку полевой. Ничего не согласовывается и не подписывается.
+
+| Что | Зачем |
+|---|---|
+| Ревизия платы совпадает с той, на которой писалось | иначе другой pinout и другое поведение реле |
+| PCF8574 при POR/reset/brownout | возможен импульс реле; NC-клапаны — единственная гарантия |
+| Контактор/силовое реле не самозамыкающееся, управляется только Nano | иначе отсечка не работает |
+| NC-safety-клапаны закрыты без питания | это последний барьер |
+| Термопредохранитель и термостат ТЭНа смонтированы | ТЭН в горении без них — пожар |
+| Датчик пламени и давление воздуха читаются и валидны | иначе FSM уйдёт в `Latched` на первом розжиге |
+| Прошита именно `esp32_core`, версия в баннере совпадает | чтобы не искать, почему «не работает защита» |
+| Nano прошит и отвечает по UART | без него `permit` нет, AUTO не поедет |
+
+**Номиналы автоматов/контакторов** выбираются отдельно и от кода не зависят.
+
+**Не закрывает:** ничего. Это чек-лист для себя, а не условие перехода к следующему этапу.
+
+> **KC868-A6:** официальная схема доступна (`KC868-A6-schematic.pdf`), но ревизию стоит сверить со своей платой. Факты уровня платы (контакты/драйвер реле, reset/brownout, опто-входы, A3/A4, RS485 без изоляции, питание) проверяются схемой и измерением. Safety-функции строятся внешним слоем Nano. PCF8574/I2C — **не fail-safe path**: при POR возможен импульс реле, и это не устраняется программно (AR-12).

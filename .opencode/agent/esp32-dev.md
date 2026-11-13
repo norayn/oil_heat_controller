@@ -1,7 +1,7 @@
 ---
 description: Разработчик ESP32 (src_esp32/). Основной контроллер, FSM котла/теплоаккумулятора, координация, обмен с Safety Unit.
 mode: subagent
-model: opencode/big-pickle
+model: opencode/deepseek-v4.1-flash-free
 tools:
   read: true
   glob: true

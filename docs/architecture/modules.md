@@ -1,8 +1,8 @@
 # Разделение ответственности Main Unit (KC868-A6) / Safety Unit (Arduino Nano)
 
-Статус: **актуально**. Main Unit — **KinCony KC868-A6, ревизия v1.3** (ESP32-WROOM-32, USB-C + CH340C, DIN/12 В, 6 реле через PCF8574 `0x24`, 6 опто-входов через PCF8574 `0x22`, 4×ADC, 2×1-Wire, RS485). Плата принята **условно / safety-gated** — `docs/hardware/kc868-a6_analysis.md` §6/§7, BLK-012. **Safety Unit — Arduino Nano (ATmega328P), не заменяется.** До board test и approvals `schematic-engineer` + `safety-reviewer` pinmap/схема не утверждены.
+Статус: **актуально**. Main Unit — **KinCony KC868-A6, ревизия v1.3** (ESP32-WROOM-32, USB-C + CH340C, DIN/12 В, 6 реле через PCF8574 `0x24`, 6 опто-входов через PCF8574 `0x22`, 4×ADC, 2×1-Wire, RS485). Плата принята — `docs/hardware/kc868-a6_analysis.md` §6/§7, BLK-012. **Safety Unit — Arduino Nano (ATmega328P), не заменяется.** Pinmap/схема пока DRAFT: сверяются с реальной платой по ходу отладки.
 
-> **Границы документа:** роли, принципы и границы ответственности. Владение конкретной периферией по кодам — `docs/hardware/periph_distribution.md`; физические линии/пины — `docs/hardware/pinmap.md`; бюджет линий A6 — `docs/hardware/kc868-a6_connection_plan.md`; блокеры и gates — `docs/architecture/blockers.md`.
+> **Границы документа:** роли, принципы и границы ответственности. Владение конкретной периферией по кодам — `docs/hardware/periph_distribution.md`; физические линии/пины — `docs/hardware/pinmap.md`; бюджет линий A6 — `docs/hardware/kc868-a6_connection_plan.md`; открытые технические вопросы — `docs/architecture/blockers.md`; принятые риски — `docs/safety/accepted_risks.md`.
 
 ## Общие принципы
 
@@ -23,7 +23,7 @@
 - **Прикладные команды** для `ACT_IGNITION_UNIT`, `ACT_OIL_VALVE_MAIN`, `ACT_AIR_VALVE_MAIN`, `ACT_FAN_BLOWER`, `ACT_HEATER_OIL` (через внешний SSR/драйвер), `ACT_PUMP_OIL_TRANSFER`, `ACT_PUMP_BOILER`. Управление `ACT_OIL_VALVE_SAFETY`/`ACT_AIR_VALVE_SAFETY` **не входит** в обязанности Main Unit. Любое действие может быть принудительно заблокировано/обесточено Nano.
 - **`ACT_HEATER_OIL`:** прикладное управление (ПИД/ограничения) через **внешний SSR/драйвер**. Nano имеет **независимый механический контактор/силовой контакт в силовой цепи последовательно с ТЭН** (SR-B4), плюс аппаратный термостат/термопредохранитель и предохранители. SSR **не** является средством аварийного отключения.
 - **`ACT_PUMP_OIL_TRANSFER`:** прикладная логика — Main Unit; допускается управление через onboard реле KC868 **только как условно безопасное при подстраховке Nano**. **Обязательно:** Nano имеет **независимый аппаратный block/stop в силовой цепи насоса, fail-safe OFF** (SR-B18). Onboard реле KC868 не является средством безопасного останова.
-- **`SEN_FLAME`** — **BLK-005 PROPOSED/NOT VALIDATED**: фоторезистор на аналоговый вход KC868 + экранирование + ЭМС-тесты при розжиге; fallback — изолированный формирователь digital/Schmitt на direct GPIO. Отклонение от SR-B13/S-47; **до APPROVE действуют требования baseline SR-B13/S-47**, отклонение не реализуется. Потеря/недостоверность пламени => закрыть топливо, безопасный останов/постпродувка, latch/no auto-restart. Nano прямого входа пламени не имеет; супервизия — heartbeat + `fsmState/stateAge` + `flameStatus` + собственные датчики.
+- **`SEN_FLAME`** — **BLK-005 PROPOSED/NOT VALIDATED**: фоторезистор на аналоговый вход KC868 + экранирование + ЭМС-тесты при розжиге; fallback — изолированный формирователь digital/Schmitt на direct GPIO. Отклонение от SR-B13/S-47; пока не проверено на котле, действуют требования baseline SR-B13/S-47. Потеря/недостоверность пламени => закрыть топливо, безопасный останов/постпродувка, latch/no auto-restart. Nano прямого входа пламени не имеет; супервизия — heartbeat + `fsmState/stateAge` + `flameStatus` + собственные датчики.
 - **Безопасность на уровне FSM** — проверки, блокировки, защитные переходы. Весь код Main Unit проектируется fail-safe.
 
 **Теплоаккумулятор и гидравлика:**
@@ -68,7 +68,7 @@
 
 ## Связь Main Unit ↔ Safety Unit: UART vs RS485
 
-Базовый вариант — **выделенный point-to-point UART**. KC868: **USB-C + CH340C** — debug/прошивка (не native USB); safety UART — на свободных GPIO (кандидаты и board test — `docs/hardware/pinmap.md`, `docs/hardware/kc868-a6_connection_plan.md`). Nano D0/D1 конфликтуют с USB-программированием/отладкой — требуется процедура/переключение/альтернатива. Общая RS485 для safety-связи **не рекомендуется** без отдельного обоснования, доказательства fail-safe при всех отказах шины/устройств и `safety-reviewer` APPROVE.
+Базовый вариант — **выделенный point-to-point UART**. KC868: **USB-C + CH340C** — debug/прошивка (не native USB); safety UART — на свободных GPIO (кандидаты и board test — `docs/hardware/pinmap.md`, `docs/hardware/kc868-a6_connection_plan.md`). Nano D0/D1 конфликтуют с USB-программированием/отладкой — требуется процедура/переключение/альтернатива. Общая RS485 для safety-связи **не рекомендуется** без отдельного обоснования и доказательства fail-safe при всех отказах шины/устройств.
 
 | Критерий | Выделенный UART (рекомендован) | Общая RS485 |
 |---|---|---|
@@ -107,7 +107,7 @@
 
 ## Ссылки
 
-- `docs/architecture/blockers.md` — BLK-001…BLK-012, approval gates.
+- `docs/architecture/blockers.md` — открытые технические вопросы (не гейты).
 - `docs/hardware/kc868-a6_analysis.md` — факты платы A6, условия принятия §6, board verification §7.
 - `docs/hardware/periph_distribution.md` — владение периферией по кодам.
 - `docs/hardware/pinmap.md` — пин-мап (DRAFT).

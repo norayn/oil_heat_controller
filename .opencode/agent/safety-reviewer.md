@@ -1,7 +1,7 @@
 ---
 description: Ревьювер по Безопасности. ОБЯЗАТЕЛЬНЫЙ ревью ВСЕХ правок кода в обоих модулях, include/, протокола, конфигурации.
 mode: subagent
-model: opencode/big-pickle
+model: opencode/deepseek-v4.1-flash-free
 tools:
   read: true
   glob: true

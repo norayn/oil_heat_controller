@@ -1,7 +1,7 @@
 ---
 description: Разработчик Arduino Nano (src_avr8/). Модуль безопасности, детерминизм, аварийные отсечки, максимальная надёжность.
 mode: subagent
-model: opencode/big-pickle
+model: opencode/deepseek-v4.1-flash-free
 tools:
   read: true
   glob: true

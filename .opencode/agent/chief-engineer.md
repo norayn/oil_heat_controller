@@ -1,7 +1,7 @@
 ---
 description: Главный Инженер проекта oil_heat_controller. Отвечает за архитектуру, распределение обязанностей, планирование и контроль целостности.
 mode: subagent
-model: opencode/big-pickle
+model: opencode/deepseek-v4.1-flash-free
 tools:
   read: true
   glob: true

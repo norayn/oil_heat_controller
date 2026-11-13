@@ -40,7 +40,7 @@
 |---|---|---|---|---|---|
 | `SEN_FLAME` | Датчик наличия пламени | Фоторезистор → аналоговый вход KC868 (PROPOSED, BLK-005) | **Ведущий контроль FSM** | Наблюдение через heartbeat/`flameStatus`/FSM; прямого входа нет | **Отклонение от SR-B13/S-47, NOT VALIDATED.** Обрыв/КЗ/потеря питания/saturated/stuck = «нет пламени». ЭМС PASS/FAIL при розжиге, latch/no auto-restart. Fallback — изолированный digital/Schmitt на direct GPIO. |
 | `SEN_AIR_PRESSURE` | Давление сжатого воздуха (пороговый) | Вкл/выкл | Использует по данным | **Основной контроль независимой защиты (прямой Nano)** | Нет/недостоверно давление ⇒ топливо не подаётся. |
-| `SEN_THERMOCOUPLE_K` | Термопара K + MAX6675 (выхлоп) | Термопара + SPI | Технологическая обратная связь горения | **Не зона контроля Nano (BLK-003, ACCEPTED RISK)** | При недостоверности/timeout/fault — безопасный прикладный режим FSM. ACK `safety-reviewer` требуется. |
+| `SEN_THERMOCOUPLE_K` | Термопара K + MAX6675 (выхлоп) | Термопара + SPI | Технологическая обратная связь горения | **Не зона контроля Nano (BLK-003, ACCEPTED RISK)** | При недостоверности/timeout/fault — безопасный прикладный режим FSM. |
 | `SEN_OIL_TEMP_SAFETY` | Температура масла для аварийной отсечки | DS18B20 | Использует | **Основной контроль независимой защиты (прямой Nano)** | Независимое отключение `ACT_HEATER_OIL`. |
 
 ### 2.2. Технологические (уровни и температура)
@@ -82,8 +82,8 @@
 - `ACT_OIL_VALVE_SAFETY`, `ACT_AIR_VALVE_SAFETY` — **только Nano**, NC, независимые контуры.
 - `SEN_AIR_PRESSURE`, `SEN_OIL_TEMP_SAFETY`, `SEN_FLOAT_MIN/MAX` — **только прямые входы Nano** (не PCF8574/опто/RS485).
 - `ACT_HEATER_OIL`, `ACT_PUMP_OIL_TRANSFER`, `ACT_IGNITION_UNIT` — в группе **общего Nano-контактора** (не самозамыкающегося, только Nano, без шунтирования).
-- `SEN_FLAME` — baseline SR-B13/S-47; отклонение BLK-005 не реализуется до APPROVE.
-- `SEN_THERMOCOUPLE_K` — технологический Main Unit, не Nano-interlock (BLK-003, ACK).
+- `SEN_FLAME` — baseline SR-B13/S-47; отклонение BLK-005 пока не реализуется.
+- `SEN_THERMOCOUPLE_K` — технологический Main Unit, не Nano-interlock (BLK-003, риск принят).
 - Nano сохраняет финальное право блокировки; PCF8574/I2C — не safety path.
 
 ## Ссылки

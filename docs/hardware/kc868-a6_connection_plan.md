@@ -109,9 +109,9 @@
 | Safety UART TX → Nano | **GPIO12** (extend serial TXD) | Выход, UART TX + внешний **pull-down** | **Strapping (MTDI):** boot test обязателен; как RX не использовать; BLK-006 | **CANDIDATE** |
 | Safety UART RX ← Nano | **GPIO13** (extend serial RXD) | Вход, UART RX | Не strapping; Nano TX idle high допустим; BLK-006; §7.18 | **CANDIDATE** |
 | `ACT_HEATER_OIL` SSR pilot | **GPIO25** (DAC2), альтернатива GPIO26 | Digital out | Проверить LM258DR; pull-down; Hi-Z = safe; BLK-002 | **CANDIDATE** |
-| `SEN_FLAME` основной | **ADC A1 = GPIO36** | Analog 0–5 В | Только после BLK-005 APPROVE; экран/ЭМС; обрыв/КЗ = «нет пламени» | **BLOCKED (BLK-005)** |
+| `SEN_FLAME` основной | **ADC A1 = GPIO36** | Analog 0–5 В | Только после проверки BLK-005; экран/ЭМС; обрыв/КЗ = «нет пламени» | **кандидат (BLK-005)** |
 | `SEN_FLAME` fallback | **ADC A2 = GPIO39** | Digital input (изолированный формирователь) | Input-only; учесть делитель/импеданс | **BLOCKED (BLK-005)** |
-| `SEN_THERMOCOUPLE_K` + MAX6675 | SPI: CS5 / SCK18 / MISO19 / MOSI23 | SPI | BLK-003 ACK; GPIO5 strapping; сокет не занимать LoRa/nRF | **CANDIDATE** |
+| `SEN_THERMOCOUPLE_K` + MAX6675 | SPI: CS5 / SCK18 / MISO19 / MOSI23 | SPI | BLK-003 (риск принят); GPIO5 strapping; сокет не занимать LoRa/nRF | **CANDIDATE** |
 | Технологические DS18B20 | 1-Wire 1 = GPIO32, 1-Wire 2 = GPIO33 | 1-Wire | Подтяжка/экран/разводка; `SEN_OIL_TEMP_SAFETY` не здесь | **CANDIDATE** |
 | Детект 220В | Опто-вход `0x22` ch0 (или ADC A3/A4) | Discrete 12 В | Внешний 220В→12В формирователь; non-safety | **TBD** |
 | Сервис/индикация | Резерв 16/17/2/26 | — | Приоритет — safety UART/STEP; лучше USB/лог | **TBD** |
@@ -249,11 +249,11 @@
 - [ ] **GPIO12 boot test:** проверить boot при low/high; зафиксировать допустимую схему.
 - [ ] **GPIO25/26 digital test:** проверить цифровой выход при LM258DR; иначе исключить.
 - [ ] **Relay POR test:** измерить состояние 6 реле до инициализации I2C, при reset/WDT/brownout; подтвердить NO/NC.
-- [ ] **BLK-006:** `safety-reviewer` APPROVE протокола до прошивки.
+- [ ] **BLK-006:** формат протокола согласован с Nano до прошивки.
 - [ ] **§7.18:** выбрать архитектуру изоляции/общего 0В; не смешивать барьеры; уровни 3.3 В ↔ 5 В.
-- [ ] **BLK-005:** `SEN_FLAME` — схема, пороги, ЭМС PASS/FAIL, fallback; APPROVE до реализации.
-- [ ] **BLK-002:** общий Nano cutoff, SR-B4 теплушка/термопредохранители, feedback, weld FMEA/ACK.
-- [ ] **BLK-003:** `safety-reviewer` ACK границы MAX6675.
+- [ ] **BLK-005:** `SEN_FLAME` — схема, пороги, ЭМС PASS/FAIL, fallback; проверка до реализации.
+- [ ] **BLK-002:** общий Nano cutoff, SR-B4 теплушка/термопредохранители, feedback, weld FMEA.
+- [ ] **BLK-003:** граница MAX6675 зафиксирована (технологическая обратная связь, не Nano-interlock).
 - [ ] **BLK-007:** схема `ACT_PUMP_BOILER`.
 - [ ] **BLK-001/SR-B6:** board-off A6, поведение вентилятора, power-cycle.
 - [ ] **S-49/BLK-010:** RS485 сегменты, термирование, slave fail-safe.

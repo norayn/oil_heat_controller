@@ -1,6 +1,6 @@
 # Протокол обмена Main Unit (KC868-A6) <-> Safety Unit (Nano)
 
-Статус: **черновик (требует миграции/согласования)**. Базовый вариант — **dedicated point-to-point UART** (safety-критичный канал). Общая шина RS485 для safety-связи **не рекомендуется** без отдельного обоснования, доказательства fail-safe при всех отказах шины/устройств и `APPROVE` `safety-reviewer`. KC868/архитектурные условия — `docs/hardware/kc868-a6_analysis.md` §6/§7. **Любое изменение транспорта/формата/семантики — fail-safe анализ + обязательный `safety-reviewer`.**
+Статус: **черновик (требует миграции)**. Базовый вариант — **dedicated point-to-point UART** (safety-критичный канал). Общая шина RS485 для safety-связи **не рекомендуется** без отдельного обоснования и доказательства fail-safe при всех отказах шины/устройств. KC868/архитектурные условия — `docs/hardware/kc868-a6_analysis.md` §6/§7. **Любое изменение транспорта/формата/семантики — fail-safe анализ и проверка на обоих концах линии.**
 
 ## Параметры связи (планируемые, фиксировать в pinmap/прошивке)
 
@@ -23,7 +23,7 @@
 
 ## Формат пакетов (BLK-006, safety draft)
 
-`include/common_protocol.h` содержит **safety-oriented draft** (`SafetyProtocol::HeartbeatMainToSafety` / `HeartbeatSafetyToMain`, `protoVer/seq/CRC` placeholder). Статус: **SAFETY DRAFT — не использовать в прошивке до `safety-reviewer` APPROVE**. При реализации зафиксировать: алгоритм CRC (и seed/polynomial), endian, capped ranges, точные enum/bits, обработку unknown/reserved, версионирование, тест-векторы.
+`include/common_protocol.h` содержит **safety-oriented draft** (`SafetyProtocol::HeartbeatMainToSafety` / `HeartbeatSafetyToMain`, `protoVer/seq/CRC` placeholder). Статус: **SAFETY DRAFT — не использовать в прошивке, пока формат не согласован с Nano**. При реализации зафиксировать: алгоритм CRC (и seed/polynomial), endian, capped ranges, точные enum/bits, обработку unknown/reserved, версионирование, тест-векторы.
 
 ### Main Unit -> Nano (минимум)
 - `protoVer`, `seq` (монотонный, фиксированной ширины, переполнение по модулю)
@@ -55,7 +55,7 @@
 
 - Onboard relays/inputs KC868 — PCF8574/I2C, **не safety path**. I2C health должен отражаться в протоколе; I2C recovery best-effort не заменяет Nano hardware cutoffs.
 - Supervised power-cycle 12В KC868 — действие Nano (SR-B6), не команда Main Unit. Main Unit должен корректно переживать обесточивание/возврат (safe boot, no auto-restart dangerous state).
-- `SEN_FLAME` (BLK-005, **PROPOSED/NOT VALIDATED**): **baseline SR-B13/S-47** — direct ESP32 GPIO + внешний гальванически изолированный формирователь digital/Schmitt, fail-safe полярность/диагностика; запрещено KC868 opto/PCF8574/I2C/ADC-raw. Пользовательское отклонение (фоторезистор -> аналоговый вход KC868 + экранирование + ЭМС-тесты; fallback opto/изолированный формирователь) **НЕ утверждено и НЕ разрешено к реализации** до PASS валидации и `safety-reviewer`+`schematic-engineer` APPROVE. До APPROVE действуют требования SR-B13/S-47. `flameStatus` в heartbeat используется Nano для супервизии (`INVALID/DEGRADED` = консервативно/не пламя для опасных действий); Nano не имеет прямого входа пламени.
+- `SEN_FLAME` (BLK-005, **PROPOSED/NOT VALIDATED**): **baseline SR-B13/S-47** — direct ESP32 GPIO + внешний гальванически изолированный формирователь digital/Schmitt, fail-safe полярность/диагностика; запрещено KC868 opto/PCF8574/I2C/ADC-raw. Пользовательское отклонение (фоторезистор -> аналоговый вход KC868 + экранирование + ЭМС-тесты; fallback opto/изолированный формирователь) **не реализуется**, пока не проверено на котле. До проверки действуют требования SR-B13/S-47. `flameStatus` в heartbeat используется Nano для супервизии (`INVALID/DEGRADED` = консервативно/не пламя для опасных действий); Nano не имеет прямого входа пламени.
 
 ## Тесты/проверки (минимум, до приёмки протокола)
 

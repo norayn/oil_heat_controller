@@ -4,7 +4,7 @@
 >
 > Документ **не фиксирует** окончательные назначения пинов/ресурсов и **не может** использоваться как основание для «утверждённой» схемы, разводки, прошивки safety-логики или монтажа.
 >
-> **Блокировка финализации:** до закрытия CRITICAL/HIGH условий в `docs/architecture/blockers.md` (и выполнения approval gates) финализация pinmap/schematic как «утверждено» **запрещена**.
+> **Статус:** DRAFT. Это рабочий пин-мап, а не утверждённый документ: линии помечены и уточняются по мере проверки на реальной плате. CANDIDATE-линии при отладке допустимы, если понятно, что они временные.
 >
 > **Main Unit = KC868-A6.** Раздел §2 — **A6 (ESP32-WROOM-32)**, остаётся **DRAFT/TBD** до board test (`docs/hardware/kc868-a6_analysis.md` §7), закрытия BLK-012 и approvals.
 >
@@ -23,8 +23,8 @@
 - **BLK-001:** `ACT_FAN_BLOWER` — реле KC868; per-circuit Nano cutoff не требуется; Nano может обесточить всю плату (SR-B6, coarse).
 - **BLK-002:** общий Nano-контактор/силовое реле (не самозамыкающееся, без самоподхвата, только Nano, без шунтирования) для `ACT_HEATER_OIL`, `ACT_PUMP_OIL_TRANSFER`, `ACT_IGNITION_UNIT`; блоуэр в обход.
 - **BLK-003:** `SEN_THERMOCOUPLE_K`/MAX6675 — технологическая обратная связь Main Unit, не зона Nano.
-- **BLK-005:** `SEN_FLAME` — фоторезистор на аналоговый вход KC868 + ЭМС-тесты; fallback — изолированный формирователь на direct GPIO. Отклонение от SR-B13/S-47, до APPROVE не реализуется.
-- **BLK-006:** `include/common_protocol.h`/`docs/protocol/uart.md` safety draft; прошивка только после `safety-reviewer` APPROVE.
+- **BLK-005:** `SEN_FLAME` — фоторезистор на аналоговый вход KC868 + ЭМС-тесты; fallback — изолированный формирователь на direct GPIO. Отклонение от SR-B13/S-47, пока не реализуется.
+- **BLK-006:** `include/common_protocol.h`/`docs/protocol/uart.md` safety draft; прошивка — после согласования формата с Nano.
 
 ## Легенда статусов (draft)
 
@@ -104,9 +104,9 @@
 | Safety UART TX → Nano | **GPIO12** (extend serial TXD) | Выход, UART TX + внешний **pull-down** | **Strapping (MTDI):** только TX; boot test обязателен; как RX не использовать | **CANDIDATE (board test)** |
 | Safety UART RX ← Nano | **GPIO13** (extend serial RXD) | Вход, UART RX | Не strapping; Nano TX idle high допустим | **CANDIDATE (board test)** |
 | `ACT_HEATER_OIL` SSR pilot | **GPIO25** (DAC2), альтернатива GPIO26 | Digital out | Проверить, что LM258DR не мешает цифровому уровню; pull-down; BLK-002 | **CANDIDATE (board test)** |
-| `SEN_FLAME` основной | **ADC A1 = GPIO36** | Analog 0–5 В | Input-only; только после BLK-005 APPROVE; обрыв/КЗ = «нет пламени» | **BLOCKED (BLK-005)** |
+| `SEN_FLAME` основной | **ADC A1 = GPIO36** | Analog 0–5 В | Input-only; только после проверки BLK-005; обрыв/КЗ = «нет пламени» | **кандидат (BLK-005)** |
 | `SEN_FLAME` fallback | **ADC A2 = GPIO39** (как digital) | Digital input (изолированный формирователь) | Input-only; учесть делитель 0–5 В/импеданс | **BLOCKED (BLK-005)** |
-| `SEN_THERMOCOUPLE_K` + MAX6675 | SPI: CS5 / SCK18 / MISO19 / MOSI23 | SPI | BLK-003 ACK; GPIO5 strapping; сокет не занимать LoRa/nRF | **CANDIDATE (BLK-003 ACK)** |
+| `SEN_THERMOCOUPLE_K` + MAX6675 | SPI: CS5 / SCK18 / MISO19 / MOSI23 | SPI | BLK-003 (риск принят); GPIO5 strapping; сокет не занимать LoRa/nRF | **CANDIDATE** |
 | Технологические DS18B20 | 1-Wire 1 = GPIO32, 1-Wire 2 = GPIO33 | 1-Wire | Подтяжка/экран/разводка; `SEN_OIL_TEMP_SAFETY` не здесь | **CANDIDATE** |
 | **Дозирующий насос STEP (PROPOSED)** | **GPIO21** (LoRa RST) | Digital out, hardware timer/RMT | Только direct GPIO, не PCF8574; BLK-002 scope extension | **CANDIDATE (board test)** |
 | **Дозирующий насос DIR (PROPOSED)** | **GPIO22** (nRF CE) | Digital out | Фиксировать логику направления; BLK-002 scope | **CANDIDATE (board test)** |
@@ -127,7 +127,7 @@
 | Nano side | D0 RX / D1 TX | **CANDIDATE** | Конфликт с USB Nano; процедура прошивки обязательна. |
 | Уровни | 5V (Nano) ↔ 3.3V (ESP32), двустороннее согласование | **TBD** | ESP32 не 5V tolerant; трансляторы ≠ изоляция. |
 | Изоляция | По архитектуре §7.18 (A или B), **не смешивать** | **BLOCKED (§7.18/schematic)** | При раздельных 0В — digital isolator/оптопары. |
-| Скорость | Единая, ≤19200 бод | **TBD (после BLK-006 APPROVE/тестов)** | Текущие 115200/9600 — расхождение, миграция. |
+| Скорость | Единая, ≤19200 бод | **TBD (после BLK-006/тестов)** | Текущие 115200/9600 — расхождение, миграция. |
 | Формат/CRC/seq/protoVer | `include/common_protocol.h` safety draft | **BLOCKED (BLK-006)** | CRC/endianness/packing/test vectors/unknown handling — до прошивки. |
 | Таймауты | Heartbeat 100–200 мс, timeout ≤3 периодов (≤600 мс) | **FIXED-DRAFT** (норматив) | Обе стороны fail-safe. |
 | Разъём/жгут | TBD (экранирование, длина, отвод от 220В/ВВ розжига) | **TBD** | S-48/ЭМС. |
